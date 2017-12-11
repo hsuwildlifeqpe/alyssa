@@ -25,6 +25,11 @@ mean.tod<-mean(as.numeric(data$MinOfDay))
 sd.tod<-sd(as.numeric(data$MinOfDay))
 tod<-(data$MinOfDay-mean.tod)/sd.tod
 
+data2 <- data
+
+data2$ttd[which(data$ttd>15)] <- NA
+data2$Tmax[which(data$Tmax>15)] <- 15
+
 
 #########################################
 #Exponential NO COVARIATES
@@ -33,7 +38,7 @@ tod<-(data$MinOfDay-mean.tod)/sd.tod
 d<-as.numeric(is.na(data$ttd)) #censoring indicator
 
 #bundle data - I had to add a nominal value to Tmax to get JAGS to play nice with this
-str(jags.data<-list(ttd=data$ttd,d=d,nobs=length(data$SiteNumber),Tmax=data$Tmax+0.01))
+str(jags.data<-list(ttd=data2$ttd,d=d,nobs=length(data2$SiteNumber),Tmax=data2$Tmax+0.01))
 
 #Define model
 cat(file="model1.txt","
@@ -74,7 +79,7 @@ n.occ<-sum(z[])             #Number of occupied sites
 
 #Parameters to estimate
 	
-	params<-c("int.psi","int.lambda","n.occ")
+	params<-c("int.psi","int.lambda","n.occ","z")
 
 #MCMC settings
 	
@@ -89,14 +94,17 @@ n.occ<-sum(z[])             #Number of occupied sites
 
 	plot(jo)
 
+
 #########################################
-#Exponential GRADIENT
+#Exponential GRADIENT [now stream]
 ########################################
 
-data$AveGrad[which(is.na(data$AveGrad))] <- 0  #I did this, but don't know if it is right... can't have NAs for explanatory vars here
+#data$AveGrad[which(is.na(data$AveGrad))] <- 0  #I did this, but don't know if it is right... can't have NAs for explanatory vars here
+
+##added new covariate for site to replace gradient for now
 
 #bundle data
-str(jags.data<-list(ttd=data$ttd,d=d,nobs=length(data$SiteNumber),covB=data$AveGrad/100,Tmax=data$Tmax+0.01))
+str(jags.data<-list(ttd=data2$ttd,d=d,nobs=length(data2$SiteNumber),covB=(as.numeric(data2$Stream)-1),Tmax=data2$Tmax+0.01))
 
 #Define model
 cat(file="model1.txt","
@@ -136,7 +144,7 @@ ttdst[jags.data$d==0]<-NA
 inits<-function(){list(z=zst,ttd=ttdst,int.psi=runif(1),int.lambda=runif(1),beta1=rnorm(1))}
 
 #Parameters to monitor
-params<-c("int.psi","int.lambda","beta1","n.occ")
+params<-c("int.psi","int.lambda","beta1","n.occ","z")
 
 #MCMC settings
 	ni<-5000 ; nt<- 2 ; nb <- 2000 ; nc<- 3
@@ -148,15 +156,7 @@ params<-c("int.psi","int.lambda","beta1","n.occ")
 
 hist(jo2[[1]][,1]) #wtf is wrong with this beta parameter
 
-
-
-
-
-
-
-
-
-
+jo2[[1]][,
 
 
 
