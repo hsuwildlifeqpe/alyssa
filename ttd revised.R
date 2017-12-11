@@ -1,15 +1,13 @@
-
-############################
-#Weibull
-############################
+##data management
+#install.packages("rjags")
+#install.packages("R2jags")
 
 setwd("C:\\Users\\db1876\\Google Drive\\alyssa")
+library(R2jags)
+
 
 #read in data
 data<-read.csv("ttd.csv")
-#str(ttd)
-#rm(data)
-
 data<-data[which(data$Survey.==1),]
 
 data$ttd<-as.numeric(data$ttd)
@@ -17,11 +15,8 @@ data$Tmax<-as.numeric(data$Tmax)
 data$SiteNumber<-as.numeric(data$SiteNumber)
 data$MinOfDay<-as.numeric(data$MinOfDay)
 
-
-#from simulation data
+#observed distribution of time to detection
 hist(data$ttd, breaks=50,col="grey",main="Observed distribution of time to detection",xlim=c(0,20),xlab="Measured time to detection")
-
-abline(v=10, col="grey",lwd=3)
 
 #Manage data and standardize time of day
 nobs<-length(as.numeric(data$SiteCode))#number of observations
@@ -30,84 +25,79 @@ mean.tod<-mean(as.numeric(data$MinOfDay))
 sd.tod<-sd(as.numeric(data$MinOfDay))
 tod<-(data$MinOfDay-mean.tod)/sd.tod
 
-#Bundle and summarize data set
-str(win.data<-list(M=length(data$SiteNumber),site=1:57,
-    tod=tod,ttd=data$ttd,d=d,covB=data$AveGrad,nobs=nobs,Tmax=data$Tmax))
 
-#covA would be observer, but dont know i can use a categorical variable
+#########################################
+#Exponential NO COVARIATES
+########################################
+
+d<-as.numeric(is.na(data$ttd)) #censoring indicator
+
+#bundle data - I had to add a nominal value to Tmax to get JAGS to play nice with this
+str(jags.data<-list(ttd=data$ttd,d=d,nobs=length(data$SiteNumber),Tmax=data$Tmax+0.01))
 
 #Define model
-cat(file="model2.txt",
-"    
-model {
+cat(file="model1.txt","
+    model{
     
-#Priors
-psi~dunif(0,1)                        #Occupancy intercept
-int.lambda~dgamma(0.0001,0.0001)      #Poisson rate parameter
-beta1~dnorm(0,0.001)                  #Slope coefficient in logit (occupancy)
-#lambda.int[1]~gamma(0.001,0.001)     #Poisson rate parameter for females
-#lambda.int[2]~gamma(0.001.0.001)     #Poisson rate paramter for males
-alpha1~dnorm(0,0.001)                 #Coefficient of time of day (linear)
-alpha2~dnorm(0,0.001)                 #Coefficient of time of day (squared)
-shape~dgamma(0.001,0.001)             #Weibul shape
-#sexration~dunif(0,1)                 #Sex ratio (proportion males)
+    #Priors
+    int.psi~dunif(0,1)                    #Occupancy intercept
+    int.lambda~dgamma(0.0001,0.0001)      #Poisson rate parameter
+       
+    #likelihood
+    for (i in 1:nobs) {
+	#Model for occurence
+    		z[i]~dbern(psi[i])
+		logit(psi[i])<-logit(int.psi)
 
-#likelihood
-for(i in 1:M){                        #Model for occurrence at site level
-    z[i]~dbin(psi,1)                      
-} #i
+    #Observation model
+    #Exponential model for time to detection ignoring censoring
+	    ttd[i]~dexp(lambda[i])
+	    log(lambda[i])<-log(int.lambda)
 
-for(i in 1:nobs){                     #Observation modle at observation level
-  #Weibull model for time to detection ignoring censoring
-  ttd[i]~dweib(shape,lambda[i])
-
-#log(lambda[i])<-(1-males[i])*log(lambda.int[1]+male[i]*log(lambda.int[2])+alpha1
-#*tod[i]+alpha2*pow(tod[i],2))
-log(lambda[i])<-log(int.lambda)+alpha1*tod[i]+alpha2*pow(tod[i],2)
-
-#model for censoring due to species absence and ttd>=Tmax
-d[i]~dbin(theta[i],1)
-theta[i]<-z[site[i]]*step(ttd[i]-Tmax[i])+(1-z[site[i]])
-
-#model for sex unobserved individuals
-#male[i]<dbern(sexratio)  #Will impute sex for unobserved individuals
-
-#Derived quantiles
-#n.occ<-sum(z[])           #number of occupied sites among M
-} #i
+    #model for censoring due to species absence and ttd>=Tmax
+	    d[i]~dbern(theta[i])
+	    theta[i]<-z[i]*step(ttd[i]-Tmax[i])+(1-z[i])
+	} #i
+#Derived quantities
+n.occ<-sum(z[])             #Number of occupied sites
 } #model
 ")
 
-#Inits function
-zst<-rep(1,win.data$M)
-ttdst<-rep(win.data$Tmax+1)
-ttdst[win.data$d==0]<-NA
-inits<-function(){list(z=zst,ttd=ttdst,psi=runif(1),lambda.int=runif(2),
-alpha1=rnorm(1),alpha2=rnorm(1),shape=runif(1))}
+#Inits function for some params
+#Initialize with z=] throughout and 
+#all NAs due to censoring, rather than non-occurence
+
+	zst<-rep(1,length(jags.data$ttd))
+	ttdst<-rep(jags.data$Tmax)
+	ttdst[jags.data$d==0]<-NA
+	inits<-function(){list(z=zst,ttd=ttdst,int.psi=runif(1),int.lambda=runif(1))}
 
 #Parameters to estimate
-params<-c("psi","lambda.int","alpha1","alpha2","n.occ","z","shape")
+	
+	params<-c("int.psi","int.lambda","n.occ")
 
-ni<-150 ; nt<-2 ; nb<- 200 ; nc<- 1
+#MCMC settings
+	
+	ni<-5000 ; nt<- 2 ; nb <- 2000 ; nc<- 3
 
-#Call JAGS from R and summarize posteriors
-install.packages("rjags")
-install.packages("R2jags")
-library(R2jags)
-out2<-jags(win.data,inits,params,"model2.txt",n.chains=nc,n.iter=ni,n.burnin=nb,n.thin=nt)
+#calls to jags
 
-print(out2,dig=3)
+	out <- jags(jags.data,inits,params,"model1.txt",n.chains=nc,n.iter=ni,n.burnin=nb,n.thin=nt)
 
+	jm <- jags.model(file="model1.txt", data=jags.data, inits=inits, n.chains=3, n.adapt=2000)
+	jo <- coda.samples(jm, params, n.iter=5000)
+
+	plot(jo)
 
 #########################################
-#Exponential
+#Exponential GRADIENT
 ########################################
-d<-as.numeric(is.na(data$ttd)) #censoring indicator
-data1<-data("ttdPeregrine")
 
+data$AveGrad[which(is.na(data$AveGrad))] <- 0  #I did this, but don't know if it is right... can't have NAs for explanatory vars here
 
 #bundle data
-str(win.data<-list(ttd=data$ttd,d=d,covB=data$AveGrad,nobs=data$SiteNumber,data$Tmax))
+str(jags.data<-list(ttd=data$ttd,d=d,nobs=length(data$SiteNumber),covB=data$AveGrad/100,Tmax=data$Tmax+0.01))
+
 #Define model
 cat(file="model1.txt","
     model{
@@ -116,23 +106,21 @@ cat(file="model1.txt","
     int.psi~dunif(0,1)                    #Occupancy intercept
     int.lambda~dgamma(0.0001,0.0001)      #Poisson rate parameter
     beta1~dnorm(0,0.001)                  #Slope coefficient in logit (occupancy)
-    alpha1~dnorm(0,0.001)                 #Coefficient of time of day (linear)
-    
-    
+
     #likelihood
-    for (i in 1:nobs{
-#Model for occurence
-    z[i]~dbern(psi[i])
-    logit(psi[i])<-logit(int.psi)+beta1*covB[i]
+    for (i in 1:nobs) {
+		#Model for occurence
+		z[i]~dbern(psi[i])
+		logit(psi[i])<-logit(int.psi)+beta1*covB[i]
 
     #Observation model
     #Exponential model for time to detection ignoring censoring
-    ttd[i]~dexp(lambda[i])
-    log(lambda[i])<-log(int.lambda)+alpha1
+		ttd[i]~dexp(lambda[i])
+		log(lambda[i])<-log(int.lambda)
 
     #model for censoring due to species absence and ttd>=Tmax
-    d[i]<-dbern(theta[i])
-    theta[i]<-z[i]*step(ttd[i]-Tmax)+(1-z[i])
+		d[i]~dbern(theta[i])
+		theta[i]<-z[i]*step(ttd[i]-Tmax[i])+(1-z[i])
 }
 #Derived quantities
 n.occ<-sum(z[])             #Number of occupied sites
@@ -142,20 +130,33 @@ n.occ<-sum(z[])             #Number of occupied sites
 #Inits function for some params
 #Initialize with z=] throughout and 
 #   all NAs due to censoring, rather than non-occurence
-zst<-rep(1,length(win.data$ttd))
-ttdst<-rep(win.data$Tmax+1,data$SiteNumber)
-ttdst[win.data$d==0]<-NA
-inits<-function(){list(z=zst,ttd=ttdst,int.psi=runif(1),int.lambda=runif(1))}
+zst<-rep(1,length(jags.data$ttd))
+ttdst<-rep(jags.data$Tmax)
+ttdst[jags.data$d==0]<-NA
+inits<-function(){list(z=zst,ttd=ttdst,int.psi=runif(1),int.lambda=runif(1),beta1=rnorm(1))}
 
-#Parameters to estimate
-Params<-c("int.psi","beta1","int.lambda","alpha1","n.occ")
+#Parameters to monitor
+params<-c("int.psi","int.lambda","beta1","n.occ")
 
 #MCMC settings
-ni<5000 ; nt<- 2 ; nb <- 2000 ; nc<- 3
+	ni<-5000 ; nt<- 2 ; nb <- 2000 ; nc<- 3
 
-#Call WinBugs
-install.packages("R2WinBUGS")
-library(R2WinBUGS)
-out1<-bugs(win.data,inits,params,"model1.txt",n.chains=nc, n.iter=ni,n.burn=nb,
-      n.thin=nt, debug=TRUE,bugs.directory=bd)
-print(out1.dig=3)
+	out2<-jags(jags.data,inits,params,"model1.txt",n.chains=nc,n.iter=ni,n.burnin=nb,n.thin=nt)
+
+	jm2 <- jags.model(file="model1.txt", data=jags.data, inits=inits, n.chains=3, n.adapt=2000)
+	jo2 <- coda.samples(jm2, params, n.iter=5000)
+
+hist(jo2[[1]][,1]) #wtf is wrong with this beta parameter
+
+
+
+
+
+
+
+
+
+
+
+
+
