@@ -1,0 +1,23 @@
+##for loop that arranges phib data into occupancy data Dan & Alyssa 9/22/2017
+
+
+phibs <- read.csv("Amphib.csv") #read in data
+
+sites <- unique(phibs$SiteCode) #get list of sites
+
+occdata <- data.frame(sites=sites,v1=rep(NA,254),v2=rep(NA,254)) #make empty data frame
+
+for(i in 1:length(sites)) {
+
+	site <- sites[i] ##get name of current site
+
+	curdata <- phibs[which(phibs$SiteCode==site),] ##get data from current site
+
+	if(sum(curdata$Survey==1 & curdata$Species=="DITE") > 0) { occdata$v1[i] <- 1 }
+	if(sum(curdata$Survey==2 & curdata$Species=="DITE") > 0) { occdata$v2[i] <- 1 }
+	if((sum(curdata$Survey==1 & curdata$Species=="DITE")==0) & (sum(curdata$Survey==1 & curdata$Species!="DITE") > 0)) { occdata$v1[i] <- 0 }
+	if((sum(curdata$Survey==2 & curdata$Species=="DITE")==0) & (sum(curdata$Survey==2 & curdata$Species!="DITE") > 0)) { occdata$v2[i] <- 0 }
+
+}
+
+write.csv("occdata.csv")
