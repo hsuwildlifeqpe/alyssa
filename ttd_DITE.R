@@ -4,14 +4,37 @@
 library(rjags)
 library(R2jags)
 
-setwd("C:\\Users\\db1876\\Google Drive\\alyssa")
+setwd("C:\\Users\\db1876\\Google Drive\\alyssa\\20171219")
 
 #read in data
 data<-read.csv("Amphib.csv")
 names(data)
-data<-data[which(data$Survey==1 & data$VES == 0 & data$Year==2016) & data$Species == "DITE",]
+data1<-data[which(data$Survey==1 & data$VES == 0 & data$Year==2016),]  ##fixed
 
-data1<-data[which()]
+data$ttd<-as.numeric(as.character(data$ttd))
+data$Tmax<-as.numeric(as.character(data$Tmax))
+data$SiteNumber<-as.numeric(as.character(data$SiteNumber))
+data$MinOfDay<-as.numeric(as.character(data$MinOfDay))
+
+sites <- data.frame(SiteCode=levels(droplevels(data1$SiteCode)), ttd=rep(0,240), Tmax=rep(0,240), MinOfDay=rep(0,240))
+
+i=1
+
+for(i in 1:length(sites$SiteCode)) {
+	tmp <- sites$SiteCode[i]
+	cur <- data[which(data$Survey==1 & data$VES == 0 & data$Year==2016 & data$Species == "DITE" & as.character(data$SiteCode)==as.character(tmp)),]
+	if(nrow(cur) > 0) {
+		sites[i,2] <- min(cur$ttd)
+		sites[i,3] <- cur$Tmax[1]
+		sites[i,4] <- cur$MinOfDay[1]
+	} else {
+		cur <- data[which(data$Survey==1 & data$VES == 0 & data$Year==2016 & as.character(data$SiteCode)==as.character(tmp)),]
+		sites[i,3] <- cur$Tmax[1]
+		sites[i,4] <- cur$MinOfDay[1]
+	}
+}
+
+#data1<-data[which()] #changed
 
 length(data$Survey==1&data$Year==2016&data$Species=="DITE")
 length(data$Survey == 1)
@@ -24,31 +47,36 @@ data$SiteNumber<-as.numeric(data$SiteNumber)
 data$MinOfDay<-as.numeric(data$MinOfDay)
 
 #observed distribution of time to detection
-hist(data$ttd, breaks=50,col="grey",main="Observed distribution of time to detection",xlim=c(0,20),xlab="Measured time to detection")
+hist(sites$ttd, breaks=50,col="grey",main="Observed distribution of time to detection",xlim=c(0,20),xlab="Measured time to detection")
 
 #Manage data and standardize time of day
-nobs<-length(data$SiteNumber)#number of observations
-d<-data$ttd #censoring indicator
-mean.tod<-mean(na.omit(data$MinOfDay))
-sd.tod<-sd(na.omit(data$MinOfDay))
-tod<-(data$MinOfDay-mean.tod)/sd.tod
+nobs<-length(sites$SiteNumber)#number of observations
+d<-sites$ttd #censoring indicator
+mean.tod<-mean(na.omit(sites$MinOfDay))
+sd.tod<-sd(na.omit(sites$MinOfDay))
+tod<-(sites$MinOfDay-mean.tod)/sd.tod
 
-quantile(na.omit(data$ttd))
+sites$ttd[which(sites$ttd ==0)] <- NA
+
+sites$ttd[which(sites$ttd>20)] <- NA
+sites$Tmax[which(sites$Tmax>20)] <- 20
+
+sites$ttd <- sites$ttd/sites$Tmax
+
+sites$Tmax <- rep(1,240)
+
+quantile(na.omit(sites$ttd))
 
 #data2 <- data
-
-#data2$ttd[which(data$ttd>15)] <- NA
-#data2$Tmax[which(data$Tmax>15)] <- 15
-
 
 #########################################
 #Exponential NO COVARIATES
 ########################################
 
-d<-as.numeric(is.na(data$ttd)) #censoring indicator
+d<-as.numeric(is.na(sites$ttd)) #censoring indicator
 
 #bundle data - I had to add a nominal value to Tmax to get JAGS to play nice with this
-str(jags.data<-list(ttd=data$ttd,d=d,nobs=length(data$SiteNumber),Tmax=data$Tmax+0.01))
+str(jags.data<-list(ttd=sites$ttd,d=d,nobs=length(sites$Tmax),Tmax=sites$Tmax+0.01))   
 
 #Define model
 cat(file="model1.txt","
@@ -101,6 +129,13 @@ jm <- jags.model(file="model1.txt", data=jags.data, inits=inits, n.chains=3, n.a
 jo <- coda.samples(jm, params, n.iter=5000)
 
 plot(jo)
+
+plot(sites$Tmax, colSums(jo[[1]][,4:243])/5000)  ##plots predictions of site-level realized occupancy against survey length
+
+sum(is.na(sites$ttd))
+
+
+#######################nothing below here was tested on 12/19/2017
 
 
 #########################################
