@@ -1,4 +1,3 @@
-
 #########################################################################
 #ASTR data
 #########################################################################
@@ -36,44 +35,49 @@ summary(ASTR)
 
 #To help stabilize the numerical optimization algorithm, its recommended standardizing the covariates
 #obsCovs(torrent) <- scale(obsCovs(torrent))
-siteCovs(ASTR) <- scale(siteCovs(ASTR))
+siteCovs(DITE) <- scale(siteCovs(DITE))
 
 
 #Fitting models
-fm1 <- occu(~1 ~1, ASTR)
-fm1
-backTransform(fm1, 'state')#prob of occupancy
-backTransform(fm1,'det')   #prob of detection
+
+#fm1 <- occu(~1 ~1, ASTR)
+#fm1
+#backTransform(fm1, 'state')#prob of occupancy
+#backTransform(fm1,'det')   #prob of detection
+#Fail to reject the null & conclude the model fit is NOT adequate
 
 fm2<-occu(~Watershed ~1, ASTR)
 fm2
 backTransform(linearComb(fm2,coefficients=c(1,0),type='det'))
 backTransform(fm2,type='state')
 
-fm3<-occu(~Tier ~1, ASTR)
-fm3
-backTransform(linearComb(fm3,coefficients=c(1,0),type='det'))
-backTransform(fm3,type='state')
+#fm3<-occu(~Tier ~1, ASTR)
+#fm3
+#backTransform(linearComb(fm3,coefficients=c(1,0),type='det'))
+#backTransform(fm3,type='state')
+#Fail to reject the null & conclude the model fit is NOT adequate
 
 fm4<-occu(~Sediment ~1, ASTR)
 fm4
 backTransform(linearComb(fm4,coefficients=c(1,0),type='det'))
 backTransform(fm4,type='state')
 
-fm5<-occu(~Watershed + Sediment ~1, ASTR)
-fm5
-backTransform(linearComb(fm5,coefficients=c(1,0,0),type='det'))
-backTransform(fm5,type='state')
+#fm5<-occu(~Watershed + Sediment ~1, ASTR)
+#fm5
+#backTransform(linearComb(fm5,coefficients=c(1,0,0),type='det'))
+#backTransform(fm5,type='state')
+#Fail to reject the null & conclude the model fit is NOT adequate
 
 fm6<-occu(~WW ~1, ASTR)
 fm6
 backTransform(linearComb(fm6,coefficients=c(1,0),type='det'))
 backTransform(fm6,type='state')
 
-fm7<-occu(~Gradient ~1, ASTR)
-fm7
-backTransform(linearComb(fm6,coefficients=c(1,0),type='det'))
-backTransform(fm7,type='state')
+#fm7<-occu(~Gradient ~1, ASTR)
+#fm7
+#backTransform(linearComb(fm6,coefficients=c(1,0),type='det'))
+#backTransform(fm7,type='state')
+#Fail to reject the null & conclude the model fit is NOT adequate
 
 fm8<-occu(~Gradient+WW+Sediment+Depth+Over+Coarse+Watershed+Tier ~1, ASTR)
 fm8
@@ -95,14 +99,27 @@ fm11
 backTransform(linearComb(fm11,coefficients=c(1,0,0,0,0,0,0,0),type='det'))
 backTransform(fm11,type='state')
 
+#fm12<-occu(~ Over ~1, ASTR)
+#fm12
+#backTransform(linearComb(fm12,coefficients=c(1,0),type='det'))
+#backTransform(fm11,type='state')
+#Fail to reject the null & conclude the model fit is NOT adequate
 
+fm13<-occu(~ Coarse ~1, ASTR)
+fm13
+backTransform(linearComb(fm13,coefficients=c(1,0),type='det'))
+backTransform(fm11,type='state')
 
+fm14<-occu(~ Depth ~1, ASTR)
+fm14
+backTransform(linearComb(fm14,coefficients=c(1,0),type='det'))
+backTransform(fm11,type='state')
+
+2
 #Model Selection and Model Fit
-fms<-fitList('psi(.)p(.)'=fm1,'psi(Watershed)p(.)'= fm2,'psi(Tier)p(.)'= fm3,
-             'psi(Sediment)p(.)'= fm4, 'psi(Watershed+Sediment)p(.)'= fm5,'psi(WW)p(.)'= fm6,
-             'psi(Gradient)p(.)'= fm7,'psi(Gradient+WW+Sediment+Depth+Over+Coarse+Watershed+Tier)p(.)'= fm8,
-             'psi(Gradient+WW+Sediment+Depth+Over+Coarse+Watershed)p(.)'= fm9,'psi(Gadient+Coarse+Watershed)p(.)'=fm10,
-             'psi(WW+Sediment+Depth+Over+Coarse+Watershed+Tier)p(.)'= fm11)
+fms<-fitList('psi(Watershed)p(.)'= fm2,'psi(Sediment)p(.)'= fm4,'psi(WW)p(.)'= fm6,
+             'psi(Gradient+WW+Sediment+Depth+Over+Coarse+Watershed+Tier)p(.)'= fm8,
+             'psi(Gradient+WW+Sediment+Depth+Over+Coarse+Watershed)p(.)'= fm9,'psi(Gadient+Coarse+Watershed)p(.)'=fm10)
 modSel(fms)
 #model weights = probabilit ythat model k is the "best" model in the candidate set
 #              = the weight of evidence in favor of model k being the actual Kullback-Leibler best model for the situation at hand
@@ -122,16 +139,25 @@ chisq <- function(fm) {
   sum((y-fv)^2/(fv*(1-fv)), na.rm=TRUE)
 }
 (pb <- parboot(fm1, statistic=chisq, nsim=100, parallel=FALSE))
+#Fail to reject the null & conclude the model fit is NOT adequate
 (pb <- parboot(fm2, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm3, statistic=chisq, nsim=100, parallel=FALSE))
+#Fail to reject the null & conclude the model fit is NOT adequate
 (pb <- parboot(fm4, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm5, statistic=chisq, nsim=100, parallel=FALSE))
+#Fail to reject the null & conclude the model fit is NOT adequate
 (pb <- parboot(fm6, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm7, statistic=chisq, nsim=100, parallel=FALSE))
+#Fail to reject the null & conclude the model fit is NOT adequate
 (pb <- parboot(fm8, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm9, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm10, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm11, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm12, statistic=chisq, nsim=100, parallel=FALSE))
+#Fail to reject the null & conclude the model fit is NOT adequate
+(pb <- parboot(fm13, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm14, statistic=chisq, nsim=100, parallel=FALSE))
+
 #################################################################
 #CI_Empirical Bayes Method
 #################################################################
