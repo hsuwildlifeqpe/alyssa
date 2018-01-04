@@ -12,6 +12,7 @@
 library(unmarked)
 
 data <- read.csv("occdata_DITE_Robust.csv")#load your data in
+SiteCovs<-read.csv("SiteCovs.csv")
 data$y.1<-as.integer(data$y.1)
 data$y.2<-as.integer(data$y.2)
 data$y.3<-as.integer(data$y.3)
