@@ -36,7 +36,7 @@ summary(ASTR)
 
 #To help stabilize the numerical optimization algorithm, its recommended standardizing the covariates
 #obsCovs(torrent) <- scale(obsCovs(torrent))
-siteCovs(DITE) <- scale(siteCovs(DITE))
+siteCovs(ASTR) <- scale(siteCovs(ASTR))
 
 
 #Fitting models
