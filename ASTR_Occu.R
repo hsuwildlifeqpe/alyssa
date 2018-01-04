@@ -133,16 +133,16 @@ chisq <- function(fm) {
 (pb <- parboot(fm10, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm11, statistic=chisq, nsim=100, parallel=FALSE))
 #################################################################
-#CI
+#CI_Empirical Bayes Method
 #################################################################
 
 re <- ranef(fm11)
 EBUP <- bup(re, stat="mode")
 CI <- confint(re, level=0.9)
 rbind(PAO = c(Estimate = sum(EBUP), colSums(CI)) / 130)
-
-#I'm not sure how to interpret, but these estimates dont seem right
-
+#if p>0.05, then we fail to reject the null hypoth and conclude that 
+#the model fit is adequate
+#POA = proportion of sites occupied
 #################################################################
 
 amphib<-read.csv("amphib.csv")
