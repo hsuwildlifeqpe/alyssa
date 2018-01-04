@@ -136,7 +136,7 @@ chisq <- function(fm) {
 #CI
 #################################################################
 
-re <- ranef(fm1)
+re <- ranef(fm11)
 EBUP <- bup(re, stat="mode")
 CI <- confint(re, level=0.9)
 rbind(PAO = c(Estimate = sum(EBUP), colSums(CI)) / 130)
