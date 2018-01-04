@@ -121,8 +121,17 @@ chisq <- function(fm) {
   y[is.na(fv)] <- NA
   sum((y-fv)^2/(fv*(1-fv)), na.rm=TRUE)
 }
+(pb <- parboot(fm1, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm2, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm3, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm4, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm5, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm6, statistic=chisq, nsim=100, parallel=FALSE))
 (pb <- parboot(fm7, statistic=chisq, nsim=100, parallel=FALSE))
-
+(pb <- parboot(fm8, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm9, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm10, statistic=chisq, nsim=100, parallel=FALSE))
+(pb <- parboot(fm11, statistic=chisq, nsim=100, parallel=FALSE))
 #################################################################
 #CI
 #################################################################
